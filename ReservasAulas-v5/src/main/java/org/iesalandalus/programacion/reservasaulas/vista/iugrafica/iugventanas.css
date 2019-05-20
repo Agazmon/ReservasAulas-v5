@@ -1,0 +1,45 @@
+* {
+	-fx-base: #aeaeaf ;
+}
+.tableview{
+	-fx-background-color: #be9c5f;
+}
+
+.titled-pane .title {
+	-fx-background-radius: 0 0 0 0;
+	-fx-border-color: none;
+}
+
+.titled-pane .content {
+	-fx-background-radius: 0 0 20 0;
+	-fx-border-color: none;
+}
+
+.titled-pane .title .text {
+	-fx-base: #be9c5f;
+}
+
+.titled-pane .content {
+	-fx-background-color: #be9c5f;
+}
+
+.vbox {
+	-fx-background-color: #be9c5f;
+}
+
+.menu-item, .context-menu {
+	-fx-background-color: #be9c5f;
+}
+
+.menu-item:hover, .context-menu:hover {
+	-fx-background-color: #4682b4;
+}
+
+.button {
+	-fx-background-radius: 10;
+}
+
+#btAnadir, #btAceptar, #btListar, #btAnadirHoras, #btAnadirPrecioMaterial, #btRealizar, #btCancelar, #btBorrar, #btDisponibilidad{
+	-fx-font: 22 "arial";
+	-fx-base: #aeaeaf;
+}
