@@ -10,11 +10,15 @@ import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Reserva;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.Permanencia;
 
 public interface IModeloReservasAulas {
+	
+	void comenzar();
+	
+	void terminar();
 
 	List<Aula> getAulas();
-
+	
 	int getNumAulas();
-
+	
 	List<String> representarAulas();
 
 	Aula buscarAula(Aula aulaBuscar);
@@ -23,14 +27,10 @@ public interface IModeloReservasAulas {
 
 	void borrarAula(Aula aulaBorrar) throws OperationNotSupportedException;
 	
-	void leerAulas();
-	
-	void escribirAulas();
-
 	List<Profesor> getProfesores();
 
 	int getNumProfesores();
-
+	
 	List<String> representarProfesores();
 
 	Profesor buscarProfesor(Profesor profesorBuscar);
@@ -39,10 +39,6 @@ public interface IModeloReservasAulas {
 
 	void borrarProfesor(Profesor profesorBorrar) throws OperationNotSupportedException;
 	
-	void leerProfesor();
-	
-	void escribirProfesor();
-
 	List<Reserva> getReservas();
 
 	int getNumReservas();
@@ -62,9 +58,5 @@ public interface IModeloReservasAulas {
 	List<Reserva> getReservasPermanencia(Permanencia permanenciaReservas);
 
 	boolean consultarDisponibilidad(Aula aula, Permanencia permanencia);
-
-	void leerReservas();
-
-	void escribirReservas();
 
 }

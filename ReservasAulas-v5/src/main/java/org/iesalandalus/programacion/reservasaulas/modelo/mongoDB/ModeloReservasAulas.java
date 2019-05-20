@@ -5,7 +5,6 @@ import java.util.List;
 import javax.naming.OperationNotSupportedException;
 
 import org.iesalandalus.programacion.reservasaulas.modelo.IModeloReservasAulas;
-import org.iesalandalus.programacion.reservasaulas.modelo.dao.*;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Aula;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Profesor;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Reserva;
@@ -13,6 +12,7 @@ import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.Pe
 import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Aulas;
 import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Profesores;
 import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Reservas;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.utilidades.MongoDB;
 
 public class ModeloReservasAulas implements IModeloReservasAulas {
 	private Profesores profesores;
@@ -28,11 +28,6 @@ public class ModeloReservasAulas implements IModeloReservasAulas {
 	@Override
 	public List<Aula> getAulas() {
 		return aulas.getAulas();
-	}
-
-	@Override
-	public int getNumAulas() {
-		return aulas.getNumAulas();
 	}
 
 	@Override
@@ -56,23 +51,8 @@ public class ModeloReservasAulas implements IModeloReservasAulas {
 	}
 
 	@Override
-	public void leerAulas() {
-		aulas.leer();
-	}
-
-	@Override
-	public void escribirAulas() {
-		aulas.escribir();
-	}
-
-	@Override
 	public List<Profesor> getProfesores() {
 		return profesores.getProfesores();
-	}
-
-	@Override
-	public int getNumProfesores() {
-		return profesores.getNumProfesores();
 	}
 
 	@Override
@@ -93,16 +73,6 @@ public class ModeloReservasAulas implements IModeloReservasAulas {
 	@Override
 	public void borrarProfesor(Profesor profesorBorrar) throws OperationNotSupportedException {
 		profesores.borrar(profesorBorrar);
-	}
-
-	@Override
-	public void leerProfesor() {
-		profesores.leer();
-	}
-
-	@Override
-	public void escribirProfesor() {
-		profesores.escribir();
 	}
 
 	@Override
@@ -156,12 +126,23 @@ public class ModeloReservasAulas implements IModeloReservasAulas {
 	}
 
 	@Override
-	public void leerReservas() {
-		reservas.leer();
+	public void comenzar() {
+		MongoDB.establecerConexion();
 	}
 
 	@Override
-	public void escribirReservas() {
-		reservas.escribir();
+	public void terminar() {
+		MongoDB.cerrarCliente();
 	}
+
+	@Override
+	public int getNumAulas() {
+		return aulas.getNumAulas();
+	}
+
+	@Override
+	public int getNumProfesores() {
+		return profesores.getNumProfesores();
+	}
+
 }
