@@ -1,217 +1,220 @@
 package org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao;
 
-import java.io.EOFException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.naming.OperationNotSupportedException;
 
+import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Aula;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Profesor;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Reserva;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.Permanencia;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.PermanenciaPorHora;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.PermanenciaPorTramo;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.utilidades.MongoDB;
+
+import com.mongodb.client.MongoCollection;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
 
 public class Reservas {
-
-	private List<Reserva> coleccionReservas;
-	private static final float MAX_PUNTOS_PROFESOR_MES = 200.00f;
-	private static final String NOMBRE_FICHERO_RESERVAS = "ficheros/reservas.dat";
-
+	
+	private static final float MAX_PUNTOS_PROFESOR_MES = 200.0f;
+	private static final String COLECCION = "reservas";
+	
+	private MongoCollection<Document> coleccionReservas;
+	
 	public Reservas() {
-		coleccionReservas = new ArrayList<>();
+		coleccionReservas = MongoDB.getBD().getCollection(COLECCION);
 	}
-
-	public Reservas(Reservas reservas) {
-		setReservas(reservas);
-	}
-
-	private void setReservas(Reservas reservas) {
-		if (reservas == null) {
-			throw new IllegalArgumentException("No se pueden copiar reservas nulas.");
-		}
-		coleccionReservas = copiaProfundaReservas(reservas.coleccionReservas);
-	}
-
-	private List<Reserva> copiaProfundaReservas(List<Reserva> reservas) {
-		List<Reserva> otrasReservas = new ArrayList<>();
-		for (Reserva reserva : reservas) {
-			otrasReservas.add(new Reserva(reserva));
-		}
-		return otrasReservas;
-	}
-
+		
 	public List<Reserva> getReservas() {
-		return copiaProfundaReservas(coleccionReservas);
+		List<Reserva> reservas = new ArrayList<>();
+		for (Document documentoReserva : coleccionReservas.find()) {
+			reservas.add(MongoDB.obtenerReservaDesdeDocumento(documentoReserva));
+		}
+		return reservas;
 	}
-
+	
 	public int getNumReservas() {
-		return coleccionReservas.size();
+		return (int)coleccionReservas.countDocuments();
 	}
-
+	
 	public void insertar(Reserva reserva) throws OperationNotSupportedException {
 		if (reserva == null) {
 			throw new IllegalArgumentException("No se puede realizar una reserva nula.");
 		}
-		if (esMesSiguienteOPosterior(reserva)) {
-			throw new OperationNotSupportedException(
-					"Sólo se pueden hacer reservas para el mes que viene o posteriores.");
+		Reserva reservaExistente = getReservaAulaDia(reserva.getAula(), reserva.getPermanencia().getDia());
+		if (reservaExistente != null) { 
+			if (reservaExistente.getPermanencia() instanceof PermanenciaPorTramo &&
+					reserva.getPermanencia() instanceof PermanenciaPorHora) {
+				throw new OperationNotSupportedException("Ya se ha realizado una reserva por tramo para este día y aula.");
+			}
+			if (reservaExistente.getPermanencia() instanceof PermanenciaPorHora &&
+					reserva.getPermanencia() instanceof PermanenciaPorTramo) {
+				throw new OperationNotSupportedException("Ya se ha realizado una reserva por hora para este día y aula.");
+			}
+		}
+		if (!esMesSiguienteOPosterior(reserva)) {
+			throw new OperationNotSupportedException("Sólo se pueden hacer reservas para el mes que viene o posteriores.");
 		}
 		if (getPuntosGastadosReserva(reserva) > MAX_PUNTOS_PROFESOR_MES) {
-			throw new OperationNotSupportedException(
-					"Esta reserva excede los puntos máximos por mes para dicho profesor.");
+			throw new OperationNotSupportedException("Esta reserva excede los puntos máximos por mes para dicho profesor.");
 		}
-		if (coleccionReservas.contains(reserva)) {
+		if (buscar(reserva) != null) {
 			throw new OperationNotSupportedException("La reserva ya existe.");
 		} else {
-			if (getReservaAulaDia(reserva.getPermanencia().getDia()) == null) {
-				if (consultarDisponibilidad(reserva.getAula(), reserva.getPermanencia())) {
-					coleccionReservas.add(new Reserva(reserva));
-				}
-			} else {
-				if (getReservaAulaDia(reserva.getPermanencia().getDia()).getPermanencia() instanceof PermanenciaPorTramo
-						& reserva.getPermanencia() instanceof PermanenciaPorTramo) {
-					if (consultarDisponibilidad(reserva.getAula(), reserva.getPermanencia())) {
-						coleccionReservas.add(new Reserva(reserva));
-					}
-				} else {
-					if (getReservaAulaDia(reserva.getPermanencia().getDia())
-							.getPermanencia() instanceof PermanenciaPorHora
-							& reserva.getPermanencia() instanceof PermanenciaPorHora) {
-						if (consultarDisponibilidad(reserva.getAula(), reserva.getPermanencia())) {
-							coleccionReservas.add(new Reserva(reserva));
-						}
-					} else {
-						if (getReservaAulaDia(reserva.getPermanencia().getDia())
-								.getPermanencia() instanceof PermanenciaPorHora) {
-							throw new OperationNotSupportedException(
-									"Ya se ha realizado una reserva por hora para este día y aula.");
-						} else {
-							throw new OperationNotSupportedException(
-									"Ya se ha realizado una reserva por tramo para este día y aula.");
-						}
-					}
-				}
-			}
+			coleccionReservas.insertOne(MongoDB.obtenerDocumentoDesdeReserva(reserva));
 		}
 	}
-
-	private boolean esFechaPasada(Reserva reserva) {
-		if (reserva.getPermanencia().getDia().getDayOfYear() < LocalDate.now().getDayOfYear()
-				&& reserva.getPermanencia().getDia().getYear() <= LocalDate.now().getYear()) {
-			return true;
-		}
-		return false;
-	}
-
+	
 	private boolean esMesSiguienteOPosterior(Reserva reserva) {
-		if (reserva.getPermanencia().getDia().getMonthValue() == (LocalDate.now().getMonthValue())
-				| reserva.getPermanencia().getDia().getYear() != LocalDate.now().getYear()) {
-			return true;
-		} else {
-			return false;
-		}
+		LocalDate diaReserva = reserva.getPermanencia().getDia();
+		LocalDate dentroDeUnMes = LocalDate.now().plusMonths(1);
+		LocalDate primerDiaMesSiguiente = LocalDate.of(dentroDeUnMes.getYear(), dentroDeUnMes.getMonth(), 1);
+		return diaReserva.isAfter(primerDiaMesSiguiente) || diaReserva.equals(primerDiaMesSiguiente);
 	}
-
+	
 	private float getPuntosGastadosReserva(Reserva reserva) {
-		float totalPuntos = 0;
-		if (getReservasProfesorMes(reserva.getProfesor(), reserva.getPermanencia().getDia()) == null) {
-			return reserva.getPuntos();
-		} else {
-			for (Reserva puntosReservas : getReservasProfesorMes(reserva.getProfesor(),
-					reserva.getPermanencia().getDia())) {
-				totalPuntos += puntosReservas.getPuntos();
-			}
-			return totalPuntos + reserva.getPuntos();
+		float puntosGastados = 0;
+		for (Reserva reservaProfesor : getReservasProfesorMes(reserva.getProfesor(), reserva.getPermanencia().getDia())) {
+			puntosGastados += reservaProfesor.getPuntos();
 		}
+		return puntosGastados + reserva.getPuntos();
 	}
-
-	private List<Reserva> getReservasProfesorMes(Profesor profesor, LocalDate fecha) {
+	
+	private List<Reserva> getReservasProfesorMes(Profesor profesor, LocalDate mes) {
+		if (profesor == null) {
+			throw new IllegalArgumentException("No se pueden buscar reservas de un profesor nulo.");
+		}
 		List<Reserva> reservasProfesor = new ArrayList<>();
-		for (Reserva reserva : coleccionReservas) {
-			if (reserva.getProfesor().equals(profesor)
-					& reserva.getPermanencia().getDia().getMonthValue() == fecha.getMonthValue()) {
+		for (Reserva reserva : getReservasProfesor(profesor)) {
+			LocalDate diaReserva = reserva.getPermanencia().getDia();
+			if (reserva.getProfesor().equals(profesor) && 
+					diaReserva.getMonthValue() == mes.getMonthValue() &&
+					diaReserva.getYear() == mes.getYear()) {
 				reservasProfesor.add(new Reserva(reserva));
 			}
 		}
 		return reservasProfesor;
 	}
-
-	private Reserva getReservaAulaDia(LocalDate fecha) {
-		for (Reserva reserva : coleccionReservas) {
-			if (reserva.getPermanencia().getDia().equals(fecha)) {
-				return new Reserva(reserva);
+	
+	private Reserva getReservaAulaDia(Aula aula, LocalDate dia) {
+		if (dia == null) {
+			throw new IllegalArgumentException("No se puede buscar reserva para un día nulo.");
+		}
+		for (Reserva reserva : getReservasAula(aula)) {
+			LocalDate diaReserva = reserva.getPermanencia().getDia();
+			Aula aulaReserva = reserva.getAula();
+			if (diaReserva.equals(dia) && aulaReserva.equals(aula)) {
+				return reserva;
 			}
 		}
 		return null;
-
 	}
-
+	
 	public Reserva buscar(Reserva reserva) {
-		int indice = coleccionReservas.indexOf(reserva);
-		if (indice != -1) {
-			return new Reserva(coleccionReservas.get(indice));
+		Bson filtroPermanencia = null;
+		if (reserva.getPermanencia() instanceof PermanenciaPorHora) {
+			filtroPermanencia = eq(MongoDB.PERMANENCIA_HORA, ((PermanenciaPorHora) reserva.getPermanencia()).getHora().format(MongoDB.FORMATO_HORA)); 
 		} else {
-			return null;
+			filtroPermanencia = eq(MongoDB.PERMANENCIA_TRAMO, ((PermanenciaPorTramo) reserva.getPermanencia()).getTramo().name());
 		}
+		Document documentoReserva = coleccionReservas.find().filter(
+			and(
+				eq(MongoDB.PROFESOR_NOMBRE, reserva.getProfesor().getNombre()),
+				eq(MongoDB.AULA_NOMBRE, reserva.getAula().getNombre()),
+				eq(MongoDB.PERMANENCIA_DIA, reserva.getPermanencia().getDia().format(MongoDB.FORMATO_DIA)),
+				filtroPermanencia
+			)).first();
+		
+		return MongoDB.obtenerReservaDesdeDocumento(documentoReserva);
 	}
-
+	
 	public void borrar(Reserva reserva) throws OperationNotSupportedException {
 		if (reserva == null) {
 			throw new IllegalArgumentException("No se puede anular una reserva nula.");
 		}
-		if (!coleccionReservas.remove(reserva)) {
+		if (!esMesSiguienteOPosterior(reserva)) {
+			throw new OperationNotSupportedException("Sólo se pueden anular reservas para el mes que viene o posteriores.");
+		}
+		if (buscar(reserva) != null) {
+			Bson filtroPermanencia = null;
+			if (reserva.getPermanencia() instanceof PermanenciaPorHora) {
+				filtroPermanencia = eq(MongoDB.PERMANENCIA_HORA, ((PermanenciaPorHora) reserva.getPermanencia()).getHora().format(MongoDB.FORMATO_HORA)); 
+			} else {
+				filtroPermanencia = eq(MongoDB.PERMANENCIA_TRAMO, ((PermanenciaPorTramo) reserva.getPermanencia()).getTramo().name());
+			}
+			coleccionReservas.deleteOne(
+				and(
+						eq(MongoDB.PROFESOR_NOMBRE, reserva.getProfesor().getNombre()),
+						eq(MongoDB.AULA_NOMBRE, reserva.getAula().getNombre()),
+						eq(MongoDB.PERMANENCIA_DIA, reserva.getPermanencia().getDia().format(MongoDB.FORMATO_DIA)),
+						filtroPermanencia
+					)
+				);
+		} else {
 			throw new OperationNotSupportedException("La reserva a anular no existe.");
+
 		}
 	}
-
+	
 	public List<String> representar() {
 		List<String> representacion = new ArrayList<>();
-		for (Reserva reserva : coleccionReservas) {
-			representacion.add(new Reserva(reserva).toString());
+		for (Reserva reserva: getReservas()) {
+			representacion.add(reserva.toString());
 		}
 		return representacion;
 	}
-
+	
 	public List<Reserva> getReservasProfesor(Profesor profesor) {
+		if (profesor == null) {
+			throw new IllegalArgumentException("No se pueden buscar reservas de un profesor nulo.");
+		}
 		List<Reserva> reservasProfesor = new ArrayList<>();
-		for (Reserva reserva : coleccionReservas) {
-			if (reserva.getProfesor().equals(profesor)) {
-				reservasProfesor.add(new Reserva(reserva));
-			}
+		for (Document documentoReserva : coleccionReservas.find(eq(MongoDB.PROFESOR_NOMBRE, profesor.getNombre()))) {
+			reservasProfesor.add(new Reserva(MongoDB.obtenerReservaDesdeDocumento(documentoReserva)));
 		}
 		return reservasProfesor;
 	}
-
+	
 	public List<Reserva> getReservasAula(Aula aula) {
+		if (aula == null) {
+			throw new IllegalArgumentException("No se pueden buscar reservas de un aula nula.");
+		}
 		List<Reserva> reservasAula = new ArrayList<>();
-		for (Reserva reserva : coleccionReservas) {
-			if (reserva.getAula().equals(aula)) {
-				reservasAula.add(new Reserva(reserva));
-			}
+		for (Document documentoReserva : coleccionReservas.find(eq(MongoDB.AULA_NOMBRE, aula.getNombre()))) {
+			reservasAula.add(new Reserva(MongoDB.obtenerReservaDesdeDocumento(documentoReserva)));
 		}
 		return reservasAula;
 	}
-
+	
 	public List<Reserva> getReservasPermanencia(Permanencia permanencia) {
+		if (permanencia == null) {
+			throw new IllegalArgumentException("No se pueden buscar reservas de una permanencia nula.");
+		}
 		List<Reserva> reservasPermanencia = new ArrayList<>();
-		for (Reserva reserva : coleccionReservas) {
-			if (reserva.getPermanencia().equals(permanencia)) {
-				reservasPermanencia.add(new Reserva(reserva));
-			}
+		Bson filtroPermanencia = null;
+		if (permanencia instanceof PermanenciaPorHora) {
+			filtroPermanencia = eq(MongoDB.PERMANENCIA_HORA, ((PermanenciaPorHora) permanencia).getHora().format(MongoDB.FORMATO_HORA)); 
+		} else {
+			filtroPermanencia = eq(MongoDB.PERMANENCIA_TRAMO, ((PermanenciaPorTramo) permanencia).getTramo().name());
+		}
+		for (Document documentoReserva : coleccionReservas.find().filter(
+				and(
+						eq(MongoDB.PERMANENCIA_DIA, permanencia.getDia().format(MongoDB.FORMATO_DIA)),
+						filtroPermanencia
+					))
+				) 
+		{
+			reservasPermanencia.add(new Reserva(MongoDB.obtenerReservaDesdeDocumento(documentoReserva)));
 		}
 		return reservasPermanencia;
 	}
-
+	
 	public boolean consultarDisponibilidad(Aula aula, Permanencia permanencia) {
 		if (aula == null) {
 			throw new IllegalArgumentException("No se puede consultar la disponibilidad de un aula nula.");
@@ -219,66 +222,13 @@ public class Reservas {
 		if (permanencia == null) {
 			throw new IllegalArgumentException("No se puede consultar la disponibilidad de una permanencia nula.");
 		}
-		if (getReservaAulaDia(permanencia.getDia()) == null) {
-			return true;
-		} else {
-			Profesor profesorConsulta = new Profesor("Profesor", "correo@correo.com");
-			Reserva reservaConsulta = new Reserva(profesorConsulta, aula, permanencia);
-			if (coleccionReservas.contains(reservaConsulta)) {
-				for (Reserva reserva : coleccionReservas) {
-					if ((getReservaAulaDia(reserva.getPermanencia().getDia())
-							.getPermanencia() instanceof PermanenciaPorTramo
-							& reserva.getPermanencia() instanceof PermanenciaPorTramo)
-							|| (getReservaAulaDia(reserva.getPermanencia().getDia())
-									.getPermanencia() instanceof PermanenciaPorHora
-									& reserva.getPermanencia() instanceof PermanenciaPorHora)) {
-						if (reserva.getPermanencia().equals(reservaConsulta.getPermanencia())) {
-							return false;
-						}
-					}
-
-				}
-				return true;
-			} else {
-				return true;
+		boolean disponible = true;
+		for (Reserva reserva: getReservasAula(aula)) {
+			if (reserva.getPermanencia().equals(permanencia)) {
+				disponible = false;
 			}
 		}
+		return disponible;
 	}
 
-	public void leer() {
-		File ficheroReservas = new File(NOMBRE_FICHERO_RESERVAS);
-		try (ObjectInputStream entrada = new ObjectInputStream(new FileInputStream(ficheroReservas))) {
-			Reserva reserva = null;
-			do {
-				reserva = (Reserva) entrada.readObject();
-				if (!esFechaPasada(reserva)) {
-					insertar(reserva);
-				}
-			} while (reserva != null);
-		} catch (ClassNotFoundException e) {
-			System.out.println("No se ha podido encontrar la clase para leer.");
-		} catch (FileNotFoundException e) {
-			System.out.println("No se puede abrir el fichero de reservas.");
-		} catch (EOFException e) {
-			System.out.println("El fichero de reservas ha sido leido.");
-		} catch (IOException e) {
-			System.out.println("Error inesperado de Entrada/Salida.");
-		} catch (OperationNotSupportedException e) {
-			System.out.println(e.getMessage());
-		}
-	}
-
-	public void escribir() {
-		File ficheroReservas = new File(NOMBRE_FICHERO_RESERVAS);
-		try (ObjectOutputStream salida = new ObjectOutputStream(new FileOutputStream(ficheroReservas))) {
-			for (Reserva reserva : coleccionReservas) {
-				salida.writeObject(reserva);
-			}
-			System.out.println("Fichero de reservas ha sido escrito");
-		} catch (FileNotFoundException e) {
-			System.out.println("No se puede crear el fichero de reservas.");
-		} catch (IOException e) {
-			System.out.println("Error inesperado de Entrada/Salida");
-		}
-	}
 }
