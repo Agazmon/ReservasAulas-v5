@@ -5,11 +5,11 @@ import java.util.List;
 import javax.naming.OperationNotSupportedException;
 import org.iesalandalus.programacion.reservasaulas.controlador.ControladorReservasAulas;
 import org.iesalandalus.programacion.reservasaulas.controlador.IControladorReservasAulas;
-import org.iesalandalus.programacion.reservasaulas.modelo.ModeloReservasAulas;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Aula;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Profesor;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Reserva;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.Permanencia;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.ModeloReservasAulas;
 import org.iesalandalus.programacion.reservasaulas.vista.IVistaReservasAulas;
 
 public class VistaReservasAulas implements IVistaReservasAulas {

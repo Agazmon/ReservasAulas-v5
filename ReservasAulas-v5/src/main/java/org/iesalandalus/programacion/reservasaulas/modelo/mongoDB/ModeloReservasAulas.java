@@ -1,14 +1,18 @@
-package org.iesalandalus.programacion.reservasaulas.modelo;
+package org.iesalandalus.programacion.reservasaulas.modelo.mongoDB;
 
 import java.util.List;
 
 import javax.naming.OperationNotSupportedException;
 
+import org.iesalandalus.programacion.reservasaulas.modelo.IModeloReservasAulas;
 import org.iesalandalus.programacion.reservasaulas.modelo.dao.*;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Aula;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Profesor;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.Reserva;
 import org.iesalandalus.programacion.reservasaulas.modelo.dominio.permanencia.Permanencia;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Aulas;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Profesores;
+import org.iesalandalus.programacion.reservasaulas.modelo.mongoDB.dao.Reservas;
 
 public class ModeloReservasAulas implements IModeloReservasAulas {
 	private Profesores profesores;
