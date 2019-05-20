@@ -45,7 +45,7 @@ public class Aulas {
 	}
 
 	public Aula buscar(Aula aula) {
-		Document documentoAula = coleccionAulas.find().filter(eq(MongoDB.AULA_NOMBRE, aula.getNombre())).first();
+		Document documentoAula = coleccionAulas.find().filter(eq(MongoDB.NOMBRE, aula.getNombre())).first();
 		return MongoDB.obtenerAulaDesdeDocumento(documentoAula);
 	}
 
@@ -54,7 +54,7 @@ public class Aulas {
 			throw new IllegalArgumentException("No se puede borrar un aula nula.");
 		}
 		if (buscar(aula)!=null) {
-			coleccionAulas.deleteOne(eq(MongoDB.AULA_NOMBRE, aula.getNombre()));
+			coleccionAulas.deleteOne(eq(MongoDB.NOMBRE, aula.getNombre()));
 		} else {
 			throw new OperationNotSupportedException("El aula a borrar no existe.");
 		}

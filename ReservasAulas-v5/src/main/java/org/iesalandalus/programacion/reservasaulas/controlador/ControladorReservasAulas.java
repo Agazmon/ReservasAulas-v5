@@ -69,7 +69,6 @@ public class ControladorReservasAulas implements IControladorReservasAulas {
 	@Override
 	public Profesor buscarProfesor(Profesor profesor) {
 		return new Profesor(modelo.buscarProfesor(profesor));
-
 	}
 
 	@Override
